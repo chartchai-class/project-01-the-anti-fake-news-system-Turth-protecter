@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社会反假新闻系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        danger: '#F53F3F',
+                        warning: '#FF7D00',
+                        success: '#00B42A',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .hover-lift {
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            .hover-lift:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            }
+            .text-balance {
+                text-wrap: balance;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark">
+    <!-- 导航栏 -->
+    <header class="sticky top-0 z-50 bg-white shadow-sm transition-all duration-300" id="navbar">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-newspaper-o text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-primary">真相卫士</h1>
+            </div>
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="#" class="font-medium hover:text-primary transition-colors" id="nav-home">首页</a>
+                <a href="#" class="font-medium hover:text-primary transition-colors" id="nav-submit">提交新闻</a>
+                <button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors" id="btn-about">关于系统</button>
+            </nav>
+            <button class="md:hidden text-dark text-xl" id="mobile-menu-btn">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+        <!-- 移动端菜单 -->
+        <div class="md:hidden hidden bg-white border-t" id="mobile-menu">
+            <div class="container mx-auto px-4 py-3 flex flex-col space-y-3">
+                <a href="#" class="py-2 font-medium hover hover:text-primary transition-colors" id="mobile-nav-home">首页</a>
+                <a href="#" class="py-2 font-medium hover:text-primary transition-colors" id="mobile-nav-submit">提交新闻</a>
+                <button class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors w-full" id="mobile-btn-about">关于系统</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 首页：新闻列表 -->
+        <section id="news-list-page" class="space-y-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div>
+                    <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark">新闻列表</h2>
+                    <p class="text-gray-500 mt-1">共同辨别新闻真伪，维护信息真实性</p>
+                </div>
+                <button class="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg transition-all flex items-center gap-2 hover-lift" id="btn-add-news">
+                    <i class="fa fa-plus"></i> 提交新闻
+                </button>
+            </div>
+
+            <!-- 过滤器和分页设置 -->
+            <div class="bg-white p-4 rounded-xl card-shadow">
+                <div class="flex flex-col md:flex-row justify-between gap-4">
+                    <div class="flex flex-wrap gap-3">
+                        <div class="flex items-center">
+                            <label for="status-filter" class="mr-2 text-gray-700">新闻状态：</label>
+                            <select id="status-filter" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <option value="all">全部新闻</option>
+                                <option value="fake">假新闻</option>
+                                <option value="not-fake">真实新闻</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center">
+                            <label for="per-page" class="mr-2 text-gray-700">每页数量：</label>
+                            <select id="per-page" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <option value="5">5条/页</option>
+                                <option value="10" selected>10条/页</option>
+                                <option value="20">20条/页</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <input type="text" id="search-news" placeholder="搜索新闻..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 w-full md:w-64">
+                            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新闻卡片列表 -->
+            <div id="news-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 新闻卡片将通过JS动态生成 -->
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="flex justify-center items-center mt-8" id="pagination-controls">
+                <button id="prev-page" class="px-4 py-2 border border-gray-300 rounded-l-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa fa-chevron-left"></i>
+                </button>
+                <div id="page-numbers" class="flex">
+                    <!-- 页码将通过JS动态生成 -->
+                </div>
+                <button id="next-page" class="px-4 py-2 border border-gray-300 rounded-r-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- 新闻详情页 -->
+        <section id="news-detail-page" class="hidden space-y-8">
+            <button class="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors" id="back-to-list">
+                <i class="fa fa-arrow-left"></i> 返回列表
+            </button>
+
+            <article class="bg-white rounded-xl overflow-hidden card-shadow">
+                <div class="relative h-64 md:h-80">
+                    <img id="news-detail-image" src="https://picsum.photos/1200/400?random=1" alt="新闻图片" class="w-full h-full object-cover">
+                    <div id="news-status-badge" class="absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-medium text-white">
+                        待验证
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h1 id="news-detail-title" class="text-2xl md:text-3xl font-bold mb-4 text-balance"></h1>
+                    
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 mb-6">
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-user"></i>
+                            <span id="news-detail-reporter"></span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-clock-o"></i>
+                            <span id="news-detail-date"></span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-bar-chart"></i>
+                            <span id="news-detail-votes"></span>
+                        </div>
+                    </div>
+
+                    <div class="prose max-w-none mb-8">
+                        <p id="news-detail-content" class="text-gray-700 leading-relaxed"></p>
+                    </div>
+
+                    <!-- 投票区域 -->
+                    <div class="border-t border-gray-100 pt-6 pb-4">
+                        <h3 class="text-lg font-semibold mb-4">您认为这是假新闻吗？</h3>
+                        <div class="flex gap-4">
+                            <button id="vote-fake" class="flex-1 bg-danger/10 hover:bg-danger/20 text-danger border border-danger/30 px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-times-circle"></i>
+                                <span>是假新闻</span>
+                            </button>
+                            <button id="vote-not-fake" class="flex-1 bg-success/10 hover:bg-success/20 text-success border border-success/30 px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa fa-check-circle"></i>
+                                <span>不是假新闻</span>
+                            </button>
+                        </div>
+                        <div id="vote-comment-container" class="mt-4 hidden">
+                            <textarea id="vote-comment" placeholder="请说明您的判断依据（可选）..." class="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" rows="3"></textarea>
+                            <div class="mt-2 flex justify-between items-center">
+                                <div class="text-sm text-gray-500">
+                                    <input type="text" id="comment-image-url" placeholder="图片URL（可选）..." class="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm">
+                                </div>
+                                <button id="submit-vote" class="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors">
+                                    提交
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 评论区 -->
+            <section class="bg-white rounded-xl p-6 card-shadow">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">用户评论与投票</h3>
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-1">
+                            <span class="text-danger font-medium" id="fake-votes-count">0</span>
+                            <span class="text-gray-500">人认为是假新闻</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-success font-medium" id="not-fake-votes-count">0</span>
+                            <span class="text-gray-500">人认为是真实新闻</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评论列表 -->
+                <div id="comments-container" class="space-y-6">
+                    <!-- 评论将通过JS动态生成 -->
+                </div>
+
+                <!-- 评论分页 -->
+                <div class="flex justify-center items-center mt-8" id="comments-pagination">
+                    <button id="comments-prev-page" class="px-4 py-2 border border-gray-300 rounded-l-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="comments-page-numbers" class="flex">
+                        <!-- 评论页码将通过JS动态生成 -->
+                    </div>
+                    <button id="comments-next-page" class="px-4 py-2 border border-gray-300 rounded-r-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <!-- 提交新闻页 -->
+        <section id="submit-news-page" class="hidden space-y-8">
+            <button class="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors" id="back-from-submit">
+                <i class="fa fa-arrow-left"></i> 返回列表
+            </button>
+
+            <div class="bg-white rounded-xl p-6 md:p-8 card-shadow">
+                <h2 class="text-2xl font-bold mb-6">提交新闻</h2>
+                <form id="submit-news-form" class="space-y-6">
+                    <div>
+                        <label for="news-title" class="block text-gray-700 font-medium mb-2">新闻标题 <span class="text-danger">*</span></label>
+                        <input type="text" id="news-title" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    </div>
+
+                    <div>
+                        <label for="news-content" class="block text-gray-700 font-medium mb-2">新闻内容 <span class="text-danger">*</span></label>
+                        <textarea id="news-content" required rows="8" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="news-reporter" class="block text-gray-700 font-medium mb-2">发布者 <span class="text-danger">*</span></label>
+                            <input type="text" id="news-reporter" required class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        </div>
+                        <div>
+                            <label for="news-image" class="block text-gray-700 font-medium mb-2">新闻图片URL（可选）</label>
+                            <input type="url" id="news-image" placeholder="https://example.com/image.jpg" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-colors hover-lift">
+                            提交新闻
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 关于系统模态框 -->
+        <div id="about-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4">
+                <div class="p-6 border-b flex justify-between items-center">
+                    <h3 class="text-xl font-bold">关于真相卫士</h3>
+                    <button id="close-about" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <p>真相卫士是一个社会反假新闻系统，旨在通过集体智慧帮助公众辨别新闻真伪。</p>
+                    <p>系统功能：</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>用户可以提交新闻供公众评判</li>
+                        <li>查看所有新闻并按真实性筛选</li>
+                        <li>对新闻的真实性进行投票和评论</li>
+                        <li>查看新闻的详细信息和公众投票结果</li>
+                    </ul>
+                    <p>我们相信，通过集体的力量，能够有效识别和抵制假新闻，维护健康的信息环境。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成功提示 -->
+        <div id="success-toast" class="fixed bottom-6 right-6 bg-success text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 z-50">
+            <i class="fa fa-check-circle"></i>
+            <span id="toast-message"></span>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-12 mt-16">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-2 mb-6 md:mb-0">
+                    <i class="fa fa-newspaper-o text-secondary text-2xl"></i>
+                    <h2 class="text-xl font-bold">真相卫士</h2>
+                </div>
+                <div class="text-gray-400 text-center md:text-right">
+                    <p>© 2023 真相卫士 - 社会反假新闻系统</p>
+                    <p class="mt-1">共同维护真实、健康的信息环境</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 全局状态管理
+        const state = {
+            news: [],
+            currentPage: 1,
+            itemsPerPage: 10,
+            currentFilter: 'all',
+            currentSearch: '',
+            currentNewsId: null,
+            commentsCurrentPage: 1,
+            commentsPerPage: 5,
+            userVotedNews: [] // 记录用户已投票的新闻ID
+        };
+
+        // 详细新闻内容模板 - 用于生成更真实的模拟数据
+        const newsContentTemplates = [
+            {
+                title: "科学家成功研发新型抗癌药物，临床试验治愈率达90%",
+                content: "近日，由国家生物医学研究所牵头的研究团队宣布，他们成功研发出一种新型抗癌药物，在二期临床试验中对晚期肺癌患者的治愈率达到了90%。该药物通过靶向癌细胞特定蛋白，能够精准消灭癌细胞而不损伤健康细胞。\n\n研究负责人李教授表示，这种药物的研发历时8年，采用了最新的基因编辑技术和纳米载体递送系统。临床试验显示，接受治疗的120名患者中，108名在3个月内癌细胞完全消失，且未出现明显副作用。\n\n该成果已发表在《自然医学》杂志上，专家预计该药物将在2024年底获得上市批准，届时将为癌症患者带来新的希望。",
+                imageUrl: "https://picsum.photos/seed/medical/800/400"
+            },
+            {
+                title: "政府将投入500亿建设乡村振兴基础设施",
+                content: "国务院今日召开新闻发布会，宣布将在未来三年内投入500亿元专项资金，用于农村基础设施建设，助力乡村振兴战略实施。\n\n据介绍，这笔资金将主要用于农村道路硬化、水利设施改造、清洁能源推广和网络基础设施升级等方面。预计将惠及全国832个贫困县和12万个行政村。\n\n农业农村部部长表示，此次投资将重点解决农村地区'出行难、灌溉难、用电难、上网难'等问题，为农村产业发展和农民生活改善提供基础保障。同时，项目将优先雇佣当地农民，预计可创造超过200万个就业岗位。",
+                imageUrl: "https://picsum.photos/seed/rural/800/400"
+            },
+            {
+                title: "研究发现：每天饮用咖啡可降低心脏病风险",
+                content: "一项发表在《美国医学协会杂志》上的最新研究表明，每天饮用2-3杯咖啡的人，患心脏病的风险比不喝咖啡的人低21%。\n\n该研究由哈佛大学公共卫生学院主导，跟踪调查了超过10万名参与者长达15年。研究人员控制了年龄、吸烟、饮食习惯等变量后发现，适度饮用咖啡与心血管健康存在显著正相关。\n\n研究负责人解释，咖啡中含有多种抗氧化物质和多酚，可能有助于改善血管功能和降低炎症反应。但专家也提醒，过量饮用（每天超过5杯）可能会带来负面影响，且应避免添加过多糖和奶油。",
+                imageUrl: "https://picsum.photos/seed/coffee/800/400"
+            },
+            {
+                title: "人工智能系统首次在围棋比赛中击败世界冠军",
+                content: "在今天举行的'智能杯'世界围棋大赛中，中国科技公司研发的人工智能系统'星阵'以3:0的比分击败了围棋世界冠军李世石，成为首个在正式比赛中战胜人类顶尖棋手的AI系统。\n\n'星阵'采用了最新的深度学习算法，结合了超过100万局职业棋手对局数据进行训练。与传统AI不同，它不仅能计算棋路，还能表现出类似人类的'直觉'，在多场看似劣势的对局中逆转获胜。\n\n人工智能专家表示，此次胜利标志着AI在复杂策略游戏领域取得了重大突破，未来可能在更广泛的领域得到应用。李世石则表示，AI的进步令人惊叹，但人类棋手仍有独特的创造力和战略思维优势。",
+                imageUrl: "https://picsum.photos/seed/ai/800/400"
+            },
+            {
+                title: "全球气温持续上升，北极冰盖面积创历史新低",
+                content: "世界气象组织发布的年度报告显示，过去一年全球平均气温较工业化前水平上升了1.2℃，北极地区升温速度是全球平均水平的两倍。\n\n卫星数据显示，北极冰盖面积已缩减至410万平方公里，为有记录以来的最低值，较2007年的 previous record 减少了13%。科学家警告，若这一趋势持续，到2030年夏季北极可能出现无冰现象。\n\n报告指出，气温上升导致极端天气事件频发，去年全球共发生了152起重大自然灾害，造成经济损失超过3000亿美元。专家呼吁各国加强合作，切实减少温室气体排放，以减缓气候变化速度。",
+                imageUrl: "https://picsum.photos/seed/climate/800/400"
+            },
+            {
+                title: "教育部：将编程纳入中小学必修课程",
+                content: "教育部今日发布《义务教育课程方案和课程标准（2023年版）》，明确将编程、人工智能、大数据处理等内容纳入中小学必修课程，从2024年秋季学期开始实施。\n\n根据方案，小学阶段将重点培养学生的计算思维和逻辑能力，初中阶段将学习基础编程知识和算法，高中阶段则会涉及人工智能初步和数据科学基础。各学校将配备专业教师，并建设至少一间人工智能实验室。\n\n教育专家表示，这一举措旨在适应数字时代对人才培养的需求，提升青少年的数字素养和创新能力。教育部同时要求，课程实施要注重实践与应用，避免沦为应试教育的又一工具。",
+                imageUrl: "https://picsum.photos/seed/education/800/400"
+            }
+        ];
+
+        // 生成更真实的模拟数据
+        function generateMockData() {
+            const statuses = ['pending', 'fake', 'not-fake'];
+            const categories = ['政治', '经济', '科技', '娱乐', '体育', '健康', '教育', '环境', '国际', '文化'];
+            const reporters = [
+                '张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十',
+                '郑一', '王二', '刘芳', '陈明', '杨丽', '张强', '赵敏'
+            ];
+            
+            const mockNews = [];
+            
+            // 先添加我们的详细新闻模板
+            newsContentTemplates.forEach((template, index) => {
+                const status = index % 3 === 0 ? 'fake' : index % 4 === 0 ? 'not-fake' : 'pending';
+                const fakeVotes = status === 'fake' ? Math.floor(Math.random() * 50) + 20 : Math.floor(Math.random() * 30);
+                const notFakeVotes = status === 'not-fake' ? Math.floor(Math.random() * 50) + 20 : Math.floor(Math.random() * 30);
+                
+                // 生成评论
+                const comments = generateComments(index + 1);
+                
+                mockNews.push({
+                    id: index + 1,
+                    title: template.title,
+                    content: template.content,
+                    reporter: reporters[Math.floor(Math.random() * reporters.length)],
+                    imageUrl: template.imageUrl,
+                    status: status,
+                    fakeVotes: fakeVotes,
+                    notFakeVotes: notFakeVotes,
+                    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+                    comments: comments
+                });
+            });
+            
+            // 再添加一些额外的新闻，确保总数达到25条
+            for (let i = newsContentTemplates.length + 1; i <= 25; i++) {
+                const category = categories[Math.floor(Math.random() * categories.length)];
+                const status = i % 5 === 0 ? 'fake' : i % 7 === 0 ? 'not-fake' : 'pending';
+                const fakeVotes = status === 'fake' ? Math.floor(Math.random() * 50) + 20 : Math.floor(Math.random() * 30);
+                const notFakeVotes = status === 'not-fake' ? Math.floor(Math.random() * 50) + 20 : Math.floor(Math.random() * 30);
+                
+                // 生成评论
+                const comments = generateComments(i);
+                
+                // 生成更丰富的内容
+                let content = `这是一篇关于${category}领域的最新报道。`;
+                
+                if (category === '政治') {
+                    content += `近日，${['市议会', '省政府', '全国人大'][Math.floor(Math.random() * 3)]}召开了关于${['公共卫生', '教育改革', '环境保护'][Math.floor(Math.random() * 3)]}的专题会议，提出了一系列新的政策措施。据了解，这些政策将在${['一个月内', '本季度末', '明年初'][Math.floor(Math.random() * 3)]}正式实施，预计将对${['市民生活', '经济发展', '社会治理'][Math.floor(Math.random() * 3)]}产生重大影响。`;
+                } else if (category === '经济') {
+                    content += `最新数据显示，${['本地', '全国', '全球'][Math.floor(Math.random() * 3)]}${['房地产市场', '股票市场', '就业市场'][Math.floor(Math.random() * 3)]}出现了${['回暖', '下滑', '稳定'][Math.floor(Math.random() * 3)]}趋势。专家分析认为，这一变化主要受到${['政策调整', '国际形势', '市场供需'][Math.floor(Math.random() * 3)]}的影响，未来${['三个月', '半年', '一年'][Math.floor(Math.random() * 3)]}可能会${['持续改善', '面临挑战', '保持稳定'][Math.floor(Math.random() * 3)]}。`;
+                } else if (category === '科技') {
+                    content += `${['国内', '国际', '知名'][Math.floor(Math.random() * 3)]}科技公司宣布研发成功${['新型芯片', '人工智能系统', '新能源技术'][Math.floor(Math.random() * 3)]}，该技术${['在性能上', '在效率上', '在成本上'][Math.floor(Math.random() * 3)]}较现有技术有${['显著提升', '重大突破', '明显优势'][Math.floor(Math.random() * 3)]}。业内人士预计，这项技术将${['改变行业格局', '推动相关产业发展', '带来新的投资机会'][Math.floor(Math.random() * 3)]}。`;
+                } else {
+                    content += `${['最近', '近日', '本月'][Math.floor(Math.random() * 3)]}，${category}领域发生了${['一件重大事件', '几项重要变化', '一系列新动态'][Math.floor(Math.random() * 3)]}，引起了${['公众', '业内人士', '专家学者'][Math.floor(Math.random() * 3)]}的广泛关注。相关方面已经${['做出回应', '采取措施', '发表声明'][Math.floor(Math.random() * 3)]}，表示将${['密切关注', '积极应对', '深入研究'][Math.floor(Math.random() * 3)]}事态发展。`;
+                }
+                
+                content += `\n\n${['有关部门', '业内专家', '相关人士'][Math.floor(Math.random() * 3)]}表示，${['将持续关注事件进展', '会及时发布更多信息', '呼吁公众保持理性'][Math.floor(Math.random() * 3)]}。${i % 3 === 0 ? '本报将继续跟踪报道。' : ''}`;
+                
+                mockNews.push({
+                    id: i,
+                    title: `${category}：${i} - ${['最新动态', '重大突破', '重要通知', '深度分析'][Math.floor(Math.random() * 4)]}`,
+                    content: content,
+                    reporter: reporters[Math.floor(Math.random() * reporters.length)],
+                    imageUrl: `https://picsum.photos/seed/${category}${i}/800/400`,
+                    status: status,
+                    fakeVotes: fakeVotes,
+                    notFakeVotes: notFakeVotes,
+                    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(),
+                    comments: comments
+                });
+            }
+            
+            return mockNews;
+        }
+        
+        // 生成更真实的评论
+        function generateComments(newsId) {
+            const comments = [];
+            const commentCount = Math.floor(Math.random() * 15) + 1;
+            
+            // 评论模板
+            const fakeReasons = [
+                "这个新闻我查证过，来源不可靠，明显是编造的",
+                "内容与事实不符，官方已经辟谣了",
+                "数据有问题，我查了相关统计，根本不是这个数字",
+                "存在明显逻辑漏洞，稍微分析一下就知道不合理",
+                "这是断章取义，完整的情况完全不是这样",
+                "图片是经过修改的，原图根本不是这个场景",
+                "时间线不对，事件发生的时间顺序有问题",
+                "引用的专家根本不存在，或者从未说过这样的话"
+            ];
+            
+            const notFakeReasons = [
+                "有多个可靠来源证实了这个消息",
+                "内容符合事实，我有朋友就在现场",
+                "数据准确，与官方发布的统计一致",
+                "逻辑清晰，事件发展合理",
+                "已经被多家权威媒体报道，可信度高",
+                "图片真实，我在其他地方也看到过",
+                "时间线正确，与已知事件发展相符",
+                "引用的专家确实发表过相关观点"
+            ];
+            
+            for (let j = 0; j < commentCount; j++) {
+                const isFake = Math.random() > 0.5;
+                const reasonIndex = Math.floor(Math.random() * (isFake ? fakeReasons.length : notFakeReasons.length));
+                
+                // 有时添加额外评论内容
+                let extraComment = "";
+                if (Math.random() > 0.6) {
+                    extraComment = "\n\n" + (isFake ? 
+                        "希望大家不要轻信这类消息，多查证再传播。" : 
+                        "这个消息很重要，值得更多人关注。");
+                }
+                
+                comments.push({
+                    id: `comment-${newsId}-${j}`,
+                    newsId: newsId,
+                    vote: isFake ? 'fake' : 'not-fake',
+                    comment: (isFake ? fakeReasons[reasonIndex] : notFakeReasons[reasonIndex]) + extraComment,
+                    imageUrl: Math.random() > 0.7 ? `https://picsum.photos/seed/comment${newsId}${j}/400/300` : null,
+                    createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
+                });
+            }
+            
+            return comments;
+        }
+
+        // 初始化应用
+        function initApp() {
+            // 从localStorage加载数据或使用模拟数据
+            const savedNews = localStorage.getItem('newsData');
+            state.news = savedNews ? JSON.parse(savedNews) : generateMockData();
+            
+            // 加载用户已投票记录
+            const savedVotes = localStorage.getItem('userVotedNews');
+            if (savedVotes) {
+                state.userVotedNews = JSON.parse(savedVotes);
+            }
+            
+            renderNewsList();
+            setupEventListeners();
+        }
+
+        // 保存数据到localStorage
+        function saveData() {
+            localStorage.setItem('newsData', JSON.stringify(state.news));
+            localStorage.setItem('userVotedNews', JSON.stringify(state.userVotedNews));
+        }
+
+        // 过滤新闻
+        function filterNews() {
+            return state.news.filter(news => {
+                // 状态过滤
+                if (state.currentFilter !== 'all' && news.status !== state.currentFilter) {
+                    return false;
+                }
+                
+                // 搜索过滤
+                if (state.currentSearch && !(
+                    news.title.toLowerCase().includes(state.currentSearch.toLowerCase()) || 
+                    news.content.toLowerCase().includes(state.currentSearch.toLowerCase()) ||
+                    news.reporter.toLowerCase().includes(state.currentSearch.toLowerCase())
+                )) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+
+        // 渲染新闻列表
+        function renderNewsList() {
+            const filteredNews = filterNews();
+            const totalPages = Math.ceil(filteredNews.length / state.itemsPerPage);
+            const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+            const paginatedNews = filteredNews.slice(startIndex, startIndex + state.itemsPerPage);
+            
+            const newsContainer = document.getElementById('news-container');
+            newsContainer.innerHTML = '';
+            
+            if (paginatedNews.length === 0) {
+                newsContainer.innerHTML = `
+                    <div class="col-span-full py-16 text-center">
+                        <i class="fa fa-search text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500 text-lg">未找到符合条件的新闻</p>
+                    </div>
+                `;
+            } else {
+                paginatedNews.forEach(news => {
+                    // 确定状态标签样式和文本
+                    let statusClass, statusText;
+                    if (news.status === 'fake') {
+                        statusClass = 'bg-danger/10 text-danger';
+                        statusText = '假新闻';
+                    } else if (news.status === 'not-fake') {
+                        statusClass = 'bg-success/10 text-success';
+                        statusText = '真实新闻';
+                    } else {
+                        statusClass = 'bg-warning/10 text-warning';
+                        statusText = '待验证';
+                    }
+                    
+                    // 格式化日期
+                    const formattedDate = new Date(news.createdAt).toLocaleString();
+                    
+                    // 创建新闻卡片
+                    const newsCard = document.createElement('div');
+                    newsCard.className = 'bg-white rounded-xl overflow-hidden card-shadow hover-lift';
+                    newsCard.innerHTML = `
+                        <div class="h-48 overflow-hidden">
+                            <img src="${news.imageUrl || 'https://picsum.photos/800/400?random=default'}" alt="${news.title}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                        </div>
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="font-bold text-lg line-clamp-2 hover:text-primary transition-colors cursor-pointer news-title" data-id="${news.id}">${news.title}</h3>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm line-clamp-3 mb-4">${news.content}</p>
+                            <div class="flex flex-wrap justify-between items-center text-xs text-gray-500">
+                                <div class="flex items-center mb-2 sm:mb-0">
+                                    <i class="fa fa-user mr-1"></i>
+                                    <span>${news.reporter}</span>
+                                </div>
+                                <div class="flex items-center mr-4">
+                                    <i class="fa fa-clock-o mr-1"></i>
+                                    <span>${formattedDate}</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fa fa-thumbs-down text-danger mr-1"></i>
+                                    <span>${news.fakeVotes}</span>
+                                    <span class="mx-1">/</span>
+                                    <i class="fa fa-thumbs-up text-success mr-1"></i>
+                                    <span>${news.notFakeVotes}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    newsContainer.appendChild(newsCard);
+                    
+                    // 添加点击事件
+                    newsCard.querySelector('.news-title').addEventListener('click', () => {
+                        viewNewsDetail(news.id);
+                    });
+                });
+            }
+            
+            // 渲染分页
+            renderPagination(totalPages);
+        }
+
+        // 渲染分页控件
+        function renderPagination(totalPages) {
+            const pageNumbersContainer = document.getElementById('page-numbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // 禁用/启用上一页/下一页按钮
+            document.getElementById('prev-page').disabled = state.currentPage === 1;
+            document.getElementById('next-page').disabled = state.currentPage === totalPages || totalPages === 0;
+            
+            // 生成页码
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, state.currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = startPage + maxVisiblePages - 1;
+            
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            // 添加第一页和省略号（如果需要）
+            if (startPage > 1) {
+                addPageNumber(1);
+                if (startPage > 2) {
+                    addEllipsis();
+                }
+            }
+            
+            // 添加可见页码
+            for (let i = startPage; i <= endPage; i++) {
+                addPageNumber(i);
+            }
+            
+            // 添加最后一页和省略号（如果需要）
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    addEllipsis();
+                }
+                addPageNumber(totalPages);
+            }
+            
+            function addPageNumber(page) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `px-4 py-2 border-t border-b border-gray-300 ${state.currentPage === page ? 'bg-primary text-white border-primary' : 'hover:bg-gray-100'}`;
+                pageBtn.textContent = page;
+                pageBtn.addEventListener('click', () => {
+                    state.currentPage = page;
+                    renderNewsList();
+                });
+                pageNumbersContainer.appendChild(pageBtn);
+            }
+            
+            function addEllipsis() {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'px-4 py-2 border-t border-b border-gray-300 text-gray-500';
+                ellipsis.textContent = '...';
+                pageNumbersContainer.appendChild(ellipsis);
+            }
+        }
+
+        // 查看新闻详情
+        function viewNewsDetail(newsId) {
+            const news = state.news.find(n => n.id === newsId);
+            if (!news) return;
+            
+            state.currentNewsId = newsId;
+            state.commentsCurrentPage = 1; // 重置评论分页
+            
+            // 更新详情页内容
+            document.getElementById('news-detail-title').textContent = news.title;
+            document.getElementById('news-detail-content').textContent = news.content;
+            document.getElementById('news-detail-reporter').textContent = news.reporter;
+            document.getElementById('news-detail-date').textContent = new Date(news.createdAt).toLocaleString();
+            document.getElementById('news-detail-image').src = news.imageUrl || 'https://picsum.photos/800/400?random=default';
+            document.getElementById('news-detail-image').alt = news.title;
+            
+            // 更新投票统计
+            document.getElementById('news-detail-votes').textContent = 
+                `假新闻: ${news.fakeVotes}票 / 真实新闻: ${news.notFakeVotes}票`;
+            document.getElementById('fake-votes-count').textContent = news.fakeVotes;
+            document.getElementById('not-fake-votes-count').textContent = news.notFakeVotes;
+            
+            // 更新状态标签
+            const statusBadge = document.getElementById('news-status-badge');
+            if (news.status === 'fake') {
+                statusBadge.textContent = '假新闻';
+                statusBadge.className = 'absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-medium bg-danger text-white';
+            } else if (news.status === 'not-fake') {
+                statusBadge.textContent = '真实新闻';
+                statusBadge.className = 'absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-medium bg-success text-white';
+            } else {
+                statusBadge.textContent = '待验证';
+                statusBadge.className = 'absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-medium bg-warning text-white';
+            }
+            
+            // 检查用户是否已投票
+            const hasVoted = state.userVotedNews.includes(newsId);
+            document.getElementById('vote-fake').disabled = hasVoted;
+            document.getElementById('vote-not-fake').disabled = hasVoted;
+            document.getElementById('vote-comment-container').classList.add('hidden');
+            
+            if (hasVoted) {
+                document.getElementById('vote-fake').classList.add('opacity-70', 'cursor-not-allowed');
+                document.getElementById('vote-not-fake').classList.add('opacity-70', 'cursor-not-allowed');
+            } else {
+                document.getElementById('vote-fake').classList.remove('opacity-70', 'cursor-not-allowed');
+                document.getElementById('vote-not-fake').classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+            
+            // 渲染评论
+            renderComments(news);
+            
+            // 切换到详情页
+            document.getElementById('news-list-page').classList.add('hidden');
+            document.getElementById('news-detail-page').classList.remove('hidden');
+            document.getElementById('submit-news-page').classList.add('hidden');
+            
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 渲染评论
+        function renderComments(news) {
+            const totalComments = news.comments.length;
+            const totalPages = Math.ceil(totalComments / state.commentsPerPage);
+            const startIndex = (state.commentsCurrentPage - 1) * state.commentsPerPage;
+            const paginatedComments = news.comments.slice(startIndex, startIndex + state.commentsPerPage);
+            
+            const commentsContainer = document.getElementById('comments-container');
+            commentsContainer.innerHTML = '';
+            
+            if (paginatedComments.length === 0) {
+                commentsContainer.innerHTML = `
+                    <div class="py-12 text-center">
+                        <i class="fa fa-comment-o text-gray-300 text-5xl mb-4"></i>
+                        <p class="text-gray-500">还没有评论，快来发表您的看法吧</p>
+                    </div>
+                `;
+            } else {
+                paginatedComments.forEach(comment => {
+                    const commentEl = document.createElement('div');
+                    commentEl.className = 'border-b border-gray-100 pb-6 last:border-0 last:pb-0';
+                    
+                    const voteClass = comment.vote === 'fake' ? 'text-danger' : 'text-success';
+                    const voteIcon = comment.vote === 'fake' ? 'fa-times-circle' : 'fa-check-circle';
+                    const voteText = comment.vote === 'fake' ? '认为是假新闻' : '认为是真实新闻';
+                    const formattedDate = new Date(comment.createdAt).toLocaleString();
+                    
+                    commentEl.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0">
+                                <i class="fa fa-user"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="font-medium">用户</span>
+                                    <span class="text-sm ${voteClass} flex items-center gap-1">
+                                        <i class="fa ${voteIcon}"></i>
+                                        ${voteText}
+                                    </span>
+                                    <span class="text-xs text-gray-500 ml-auto">${formattedDate}</span>
+                                </div>
+                                <p class="text-gray-700 mb-3 whitespace-pre-line">${comment.comment}</p>
+                                ${comment.imageUrl ? `<img src="${comment.imageUrl}" alt="评论图片" class="rounded-lg max-w-full h-48 object-cover">` : ''}
+                            </div>
+                        </div>
+                    `;
+                    commentsContainer.appendChild(commentEl);
+                });
+            }
+            
+            // 渲染评论分页
+            renderCommentsPagination(totalPages);
+        }
+
+        // 渲染评论分页
+        function renderCommentsPagination(totalPages) {
+            const pageNumbersContainer = document.getElementById('comments-page-numbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // 禁用/启用上一页/下一页按钮
+            document.getElementById('comments-prev-page').disabled = state.commentsCurrentPage === 1;
+            document.getElementById('comments-next-page').disabled = state.commentsCurrentPage === totalPages || totalPages === 0;
+            
+            // 生成页码
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, state.commentsCurrentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = startPage + maxVisiblePages - 1;
+            
+            if (endPage > totalPages) {
+                endPage = totalPages;
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            // 添加第一页和省略号（如果需要）
+            if (startPage > 1) {
+                addCommentPageNumber(1);
+                if (startPage > 2) {
+                    addCommentEllipsis();
+                }
+            }
+            
+            // 添加可见页码
+            for (let i = startPage; i <= endPage; i++) {
+                addCommentPageNumber(i);
+            }
+            
+            // 添加最后一页和省略号（如果需要）
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    addCommentEllipsis();
+                }
+                addCommentPageNumber(totalPages);
+            }
+            
+            function addCommentPageNumber(page) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `px-4 py-2 border-t border-b border-gray-300 ${state.commentsCurrentPage === page ? 'bg-primary text-white border-primary' : 'hover:bg-gray-100'}`;
+                pageBtn.textContent = page;
+                pageBtn.addEventListener('click', () => {
+                    state.commentsCurrentPage = page;
+                    const news = state.news.find(n => n.id === state.currentNewsId);
+                    renderComments(news);
+                });
+                pageNumbersContainer.appendChild(pageBtn);
+            }
+            
+            function addCommentEllipsis() {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'px-4 py-2 border-t border-b border-gray-300 text-gray-500';
+                ellipsis.textContent = '...';
+                pageNumbersContainer.appendChild(ellipsis);
+            }
+        }
+
+        // 提交投票
+        function submitVote(voteType) {
+            const news = state.news.find(n => n.id === state.currentNewsId);
+            if (!news) return;
+            
+            // 更新投票数
+            if (voteType === 'fake') {
+                news.fakeVotes++;
+            } else {
+                news.notFakeVotes++;
+            }
+            
+            // 更新新闻状态（根据投票结果）
+            const totalVotes = news.fakeVotes + news.notFakeVotes;
+            if (totalVotes >= 10) { // 至少10票才确定状态
+                if (news.fakeVotes > news.notFakeVotes * 1.5) {
+                    news.status = 'fake';
+                } else if (news.notFakeVotes > news.fakeVotes * 1.5) {
+                    news.status = 'not-fake';
+                }
+            }
+            
+            // 添加评论（如果有）
+            const commentText = document.getElementById('vote-comment').value.trim();
+            const imageUrl = document.getElementById('comment-image-url').value.trim();
+            
+            if (commentText || imageUrl) {
+                news.comments.push({
+                    id: `comment-${news.id}-${Date.now()}`,
+                    newsId: news.id,
+                    vote: voteType,
+                    comment: commentText || (voteType === 'fake' ? '我认为这是假新闻' : '我认为这是真实新闻'),
+                    imageUrl: imageUrl || null,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            
+            // 记录用户已投票
+            state.userVotedNews.push(news.id);
+            
+            // 保存数据
+            saveData();
+            
+            // 更新UI
+            viewNewsDetail(news.id);
+            
+            // 显示成功提示
+            showToast(voteType === 'fake' ? '已成功提交假新闻投票' : '已成功提交真实新闻投票');
+        }
+
+        // 提交新闻
+        function submitNews(formData) {
+            const newId = state.news.length > 0 ? Math.max(...state.news.map(n => n.id)) + 1 : 1;
+            
+            const newNews = {
+                id: newId,
+                title: formData.title,
+                content: formData.content,
+                reporter: formData.reporter,
+                imageUrl: formData.imageUrl || `https://picsum.photos/800/400?random=${newId}`,
+                status: 'pending',
+                fakeVotes: 0,
+                notFakeVotes: 0,
+                createdAt: new Date().toISOString(),
+                comments: []
+            };
+            
+            state.news.unshift(newNews); // 添加到开头
+            saveData();
+            
+            // 返回新闻列表并刷新
+            state.currentPage = 1;
+            renderNewsList();
+            
+            // 切换到列表页
+            document.getElementById('news-list-page').classList.remove('hidden');
+            document.getElementById('news-detail-page').classList.add('hidden');
+            document.getElementById('submit-news-page').classList.add('hidden');
+            
+            // 显示成功提示
+            showToast('新闻提交成功，等待公众评判');
+        }
+
+        // 显示提示消息
+        function showToast(message) {
+            const toast = document.getElementById('success-toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastMessage.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 导航栏滚动效果
+            window.addEventListener('scroll', () => {
+                const navbar = document.getElementById('navbar');
+                if (window.scrollY > 10) {
+                    navbar.classList.add('py-2', 'shadow');
+                    navbar.classList.remove('py-3', 'shadow-sm');
+                } else {
+                    navbar.classList.add('py-3', 'shadow-sm');
+                    navbar.classList.remove('py-2', 'shadow');
+                }
+            });
+            
+            // 移动端菜单
+            document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+                const mobileMenu = document.getElementById('mobile-menu');
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // 导航到首页
+            document.getElementById('nav-home').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('news-list-page').classList.remove('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.add('hidden');
+                document.getElementById('mobile-menu').classList.add('hidden');
+            });
+            
+            document.getElementById('mobile-nav-home').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('news-list-page').classList.remove('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.add('hidden');
+                document.getElementById('mobile-menu').classList.add('hidden');
+            });
+            
+            // 导航到提交新闻页
+            document.getElementById('nav-submit').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('news-list-page').classList.add('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.remove('hidden');
+                document.getElementById('mobile-menu').classList.add('hidden');
+                // 重置表单
+                document.getElementById('submit-news-form').reset();
+            });
+            
+            document.getElementById('mobile-nav-submit').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('news-list-page').classList.add('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.remove('hidden');
+                document.getElementById('mobile-menu').classList.add('hidden');
+                // 重置表单
+                document.getElementById('submit-news-form').reset();
+            });
+            
+            // 提交新闻按钮
+            document.getElementById('btn-add-news').addEventListener('click', () => {
+                document.getElementById('news-list-page').classList.add('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.remove('hidden');
+                // 重置表单
+                document.getElementById('submit-news-form').reset();
+            });
+            
+            // 从提交页返回
+            document.getElementById('back-from-submit').addEventListener('click', () => {
+                document.getElementById('news-list-page').classList.remove('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.add('hidden');
+            });
+            
+            // 关于系统模态框
+            document.getElementById('btn-about').addEventListener('click', () => {
+                document.getElementById('about-modal').classList.remove('hidden');
+            });
+            
+            document.getElementById('mobile-btn-about').addEventListener('click', () => {
+                document.getElementById('about-modal').classList.remove('hidden');
+                document.getElementById('mobile-menu').classList.add('hidden');
+            });
+            
+            document.getElementById('close-about').addEventListener('click', () => {
+                document.getElementById('about-modal').classList.add('hidden');
+            });
+            
+            // 点击模态框外部关闭
+            document.getElementById('about-modal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('about-modal')) {
+                    document.getElementById('about-modal').classList.add('hidden');
+                }
+            });
+            
+            // 新闻列表分页
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (state.currentPage > 1) {
+                    state.currentPage--;
+                    renderNewsList();
+                }
+            });
+            
+            document.getElementById('next-page').addEventListener('click', () => {
+                const filteredNews = filterNews();
+                const totalPages = Math.ceil(filteredNews.length / state.itemsPerPage);
+                if (state.currentPage < totalPages) {
+                    state.currentPage++;
+                    renderNewsList();
+                }
+            });
+            
+            // 状态过滤
+            document.getElementById('status-filter').addEventListener('change', (e) => {
+                state.currentFilter = e.target.value;
+                state.currentPage = 1; // 重置到第一页
+                renderNewsList();
+            });
+            
+            // 每页数量
+            document.getElementById('per-page').addEventListener('change', (e) => {
+                state.itemsPerPage = parseInt(e.target.value);
+                state.currentPage = 1; // 重置到第一页
+                renderNewsList();
+            });
+            
+            // 搜索新闻
+            document.getElementById('search-news').addEventListener('input', (e) => {
+                state.currentSearch = e.target.value;
+                state.currentPage = 1; // 重置到第一页
+                renderNewsList();
+            });
+            
+            // 返回列表
+            document.getElementById('back-to-list').addEventListener('click', () => {
+                document.getElementById('news-list-page').classList.remove('hidden');
+                document.getElementById('news-detail-page').classList.add('hidden');
+                document.getElementById('submit-news-page').classList.add('hidden');
+            });
+            
+            // 评论分页
+            document.getElementById('comments-prev-page').addEventListener('click', () => {
+                if (state.commentsCurrentPage > 1) {
+                    state.commentsCurrentPage--;
+                    const news = state.news.find(n => n.id === state.currentNewsId);
+                    renderComments(news);
+                }
+            });
+            
+            document.getElementById('comments-next-page').addEventListener('click', () => {
+                const news = state.news.find(n => n.id === state.currentNewsId);
+                if (news) {
+                    const totalPages = Math.ceil(news.comments.length / state.commentsPerPage);
+                    if (state.commentsCurrentPage < totalPages) {
+                        state.commentsCurrentPage++;
+                        renderComments(news);
+                    }
+                }
+            });
+            
+            // 投票按钮
+            document.getElementById('vote-fake').addEventListener('click', () => {
+                document.getElementById('vote-comment-container').classList.remove('hidden');
+                document.getElementById('vote-comment-container').dataset.voteType = 'fake';
+            });
+            
+            document.getElementById('vote-not-fake').addEventListener('click', () => {
+                document.getElementById('vote-comment-container').classList.remove('hidden');
+                document.getElementById('vote-comment-container').dataset.voteType = 'not-fake';
+            });
+            
+            // 提交投票
+            document.getElementById('submit-vote').addEventListener('click', () => {
+                const voteType = document.getElementById('vote-comment-container').dataset.voteType;
+                if (voteType) {
+                    submitVote(voteType);
+                }
+            });
+            
+            // 提交新闻表单
+            document.getElementById('submit-news-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = {
+                    title: document.getElementById('news-title').value.trim(),
+                    content: document.getElementById('news-content').value.trim(),
+                    reporter: document.getElementById('news-reporter').value.trim(),
+                    imageUrl: document.getElementById('news-image').value.trim()
+                };
+                
+                if (!formData.title || !formData.content || !formData.reporter) {
+                    alert('请填写必填字段');
+                    return;
+                }
+                
+                submitNews(formData);
+            });
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
